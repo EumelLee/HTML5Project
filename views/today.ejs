@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ko">
+<%-include('layout/head'); %>
+<body>
+	<a href="#main" id="skipNavi">본문바로가기</a>
+	<div id="page">
+    <%-include('layout/header'); %>
+    <div id="main">
+			<section id="search">
+				<h1>쿠폰 검색</h1>
+				<form id="coupon_search" name="coupon_search" action="#" method="get">
+					<label for="search_date">기간</label>
+					<select id="search_date" name="date">
+            <option value="all">전체</option>
+            <option value="buyable" selected>구매가능</option>						
+            <option value="past">지난쿠폰</option>
+					</select>
+					<label for="search_location">지역</label>
+					<select id="search_location" name="location">
+						<option value="">전체</option>
+						<option>강남</option>
+						<option>압구정</option>
+						<option>논현</option>
+						<option>홍대</option>
+						<option>신촌</option>
+						<option>기타</option>
+					</select>
+					<label for="search_keyword">키워드</label>
+					<input type="text" id="search_keyword" name="keyword" value="">
+					<input type="submit" value="검색">
+				</form>
+			</section>
+			<section id="coupon">
+				<h1 class="blind">쿠폰 리스트</h1>
+				<div id="time"><time datetime="2099-12-31">2099-12-31</time></div>
+				<div class="coupon_list">
+          <!-- 쿠폰 목록 출력 영역 -->
+          <% list.forEach(function(coupon, i){ %>
+            <article class="p<%=i%>" tabindex="0">
+              <h1><%=coupon.couponName%></h1>
+              <a href="/coupons/<%=coupon._id%>">
+                <img class="list_img" src="/image/coupon/<%=coupon.image.main.file%>" alt="<%=coupon.image.main.desc%>">
+              </a>
+              <section class="content">						
+                <ul class="coupon_info">									
+                  <li class="discount">할인가격 : <em><%=coupon.price%></em></li>
+                </ul>
+              </section>
+            </article>
+
+          <%}); %>
+
+          <% for(var i=list.length; i<5; i++){ %>
+            <article class="p<%=i%> no_content">
+              <h1>등록된 상품이 없습니다.</h1>
+            </article>
+
+
+          <%} %>
+
+
+          
+        
+         
+          
+				</div>
+			</section>
+			<div id="coupon_control">
+        <button type="button" class="btn_pre">이전</button>
+				<a href="/today2.html"><button type="button" class="btn_next">다음</button></a>		
+			</div>
+		</div>
+
+    <%-include('layout/footer'); %>
+
+	</div>
+</body>
+</html>
+
+
+
+
+
