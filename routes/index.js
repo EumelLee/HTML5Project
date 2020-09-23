@@ -14,7 +14,7 @@ router.get('/', function(req, res, next) {
 
 //오늘 메뉴 
 router.get('/today', function(req, res, next) {
-  model.couponList(function(list){
+  model.couponList(req.query,function(list){
     res.render('today', { title: '오늘의 쿠폰', list, css: 'today.css' });
 
   });
@@ -23,7 +23,8 @@ router.get('/today', function(req, res, next) {
 //쿠폰 상세 조회  값 : 콜론으로 
 router.get('/coupons/:_id', function(req, res, next) {
   var _id = req.params._id;
-  model.couponDetail(_id, function(coupon){
+  //쿠폰디테일에서 첫번째 인자값 소켓 io로 바꿔줌
+  model.couponDetail(req.app.get('io'), _id, function(coupon){
     //coupon : coupon 같으면 생략이 가능하다 
     res.render('detail', { title: coupon.couponName, coupon , toStar: MyUtil.toStar, css:'detail.css', js: 'detail.js' });
 
@@ -53,7 +54,11 @@ router.post('/purchase', function(req, res, next) {
 
 // 근처 메뉴
 router.get('/location', function(req, res, next){
-  res.render('location', {title: '근처 쿠폰', css: 'location.css', js: 'location.js'});
+  model.couponList(null, function(list){
+    res.render('location', {title: '근처 쿠폰', css: 'location.css', js: 'location.js', list});
+  });
+
+ 
 });
 // 추천 메뉴
 router.get('/best', function(req, res, next){
@@ -61,11 +66,16 @@ router.get('/best', function(req, res, next){
 });
 // top5 쿠폰 조회
 router.get('/topCoupon', function(req, res, next){
-  res.json([]);
+  //get : req.query, 나머지 body
+  model.topCoupon(req.query.condition, function(list){
+    res.json(list); //문자열로 바꾸고 다시 배열로 바꾸는 작업 필요없음 .. 
+  });
 });
 // 모두 메뉴
 router.get('/all', function(req, res, next){
-  res.render('all', {title: '모든 쿠폰', css: 'all.css'});
+  model.couponList(req.query,function(list){
+    res.render('all', { title: '모든 쿠폰', list, css: 'all.css' });
+  });
 });
 // 쿠폰 남은 수량 조회
 router.get('/couponQuantity', function(req, res, next){

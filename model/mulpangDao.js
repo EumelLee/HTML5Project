@@ -5,7 +5,6 @@ var path = require('path');
 var clog = require('clog');
 var fs = require('fs');
 var MyUtil = require('../utils/myutil');
-const { SSL_OP_COOKIE_EXCHANGE } = require('constants');
 
 // DB 접속
 var db;
@@ -20,20 +19,48 @@ MongoClient.connect('mongodb://localhost:27017', { useNewUrlParser: true, useUni
 });
 
 // 쿠폰 목록조회
-module.exports.couponList = function(cb){
+module.exports.couponList = function(qs,cb){
+  //qs있으면 쓰고 없으면 빈 객체로 .. 논리합 연산자 
+  qs = qs || {};
+  var now = MyUtil.getDay();
 	// 검색 조건
 	var query = {};
-	// 1. 판매 시작일이 지난 쿠폰, 구매 가능 쿠폰(기본 검색조건)	
-	// 2. 전체/구매가능/지난쿠폰
-	// 3. 지역명	
-	// 4. 검색어	
+  // 1. 판매 시작일이 지난 쿠폰, 구매 가능 쿠폰(기본 검색조건)	
+  query['saleDate.start'] = {$lte:now}; //판매시작일이 오늘 이하인 애
+  query['saleDate.finish'] = {$gte:now}; //오늘 이상인 애
+   // 2. 전체/구매가능/지난쿠폰
+   switch(qs.date){
+     case 'all':
+       delete query['saleDate.finish'];
+       break;
+     case 'past':
+      query['saleDate.finish'] = {$lte:now}; 
+      break;
+   }
+  // 3. 지역명	
+
+  if(qs.location){
+    query['region'] = qs.location;
+  }
+  
+  // 4. 검색어	
+  
+  if(qs.keyword && qs.keyword.trim() != ''){
+    var regExp = new RegExp(qs.keyword, 'i');
+    //배열 중 하나만 일치하면 된다
+    query['$or'] = [{couponName: regExp},{desc: regExp}];
+  }
 
 	// 정렬 옵션
 	var orderBy = {};
-	// 1. 사용자 지정 정렬 옵션	
-	// 2. 판매 시작일 내림차순(최근 쿠폰)	
+  // 1. 사용자 지정 정렬 옵션
+  if(qs.order){
+    orderBy[qs.order] = -1; //-1:내림차순, 1: 오름차순
+  }	
+  // 2. 판매 시작일 내림차순(최근 쿠폰)	
+  orderBy['saleDate.start'] = -1; // 같은 개수를 팔았는데 둘중 판매시작일이 더 현재와 가까운 것을 먼저 보여줌
 	// 3. 판매 종료일 오름차순(종료 임박 쿠폰)
-
+  orderBy['saleDate.finish'] = 1; //판매종료일이 더 오늘과 가까운 것 
 	// 출력할 속성 목록
 	var fields = {
 		couponName: 1,
@@ -46,66 +73,61 @@ module.exports.couponList = function(cb){
 		buyQuantity: 1,
 		saleDate: 1,
 		position: 1
-	};
+  };
+  
+  var count = 0;
+  var offset = 0;
 	
 	// TODO 전체 쿠폰 목록을 조회한다.
-  var count = 3;
-  var offset = 0;
-
-  // TODO 쿠폰 정보를 조회한다.
-  db.coupon.find()
-  .project(fields)
-  .sort(orderBy)
-  .skip(offset)
-  .limit(count)
-  .toArray(function(err, data){
-    clog.info(data.length);
-    cb(data); //콜백함수의 인자값을 호출해준다 ... 
+	db.coupon.find(query)
+    .project(fields)
+    .sort(orderBy)
+    .skip(offset)
+    .limit(count)
+    .toArray(function(err, data){
+      clog.info(data.length);
+      cb(data);
   });
-	
 };
 
 // 쿠폰 상세 조회
-module.exports.couponDetail = function(_id, cb){
-  // coupon, shop, epilogue 조인
-  
-  db.coupon.aggregate([{
-    $match : {_id: ObjectId(_id)}
-
-   },{
-     //shop 조인
-     $lookup: {
-       from: 'shop', //조인 할 컬랙션
-       localField: 'shopId', //coupon.shopId
-       foreignField: '_id', //shop._id
-       as: 'shop'
-     }
-
-   },{
-     //shop의 조인 결과(배열)를 각각의 객체로 변환 . [] : 배열 
-     $unwind: '$shop'
-
-
-  },{
-    //epilogue조인
+module.exports.couponDetail = function(io, _id, cb){
+	// coupon, shop, epilogue 조인
+	db.coupon.aggregate([{
+    $match: {_id: ObjectId(_id)}
+  }, {
+    // shop 조인
     $lookup: {
-      from: 'epilogue', //조인 할 컬랙션
-      localField: '_id', //coupon._id
-      foreignField: 'couponId', //epilogue.couponId
+      from: 'shop', // 조인할 컬렉션
+      localField: 'shopId', // coupon.shopId
+      foreignField: '_id', // shop._id
+      as: 'shop'
+    }
+  }, {
+    // shop 조인 결과를(배열) 각각의 객체로 변환
+    $unwind: '$shop'
+  }, {
+    // epilogue 조인
+    $lookup: {
+      from: 'epilogue', // 조인할 컬렉션
+      localField: '_id', // coupon._id
+      foreignField: 'couponId', // epilogue.couponId
       as: 'epilogueList'
     }
-
   }]).toArray(function(err, data){
     var coupon = data[0];
     clog.debug(coupon);
     cb(coupon);
-  });
-	
-	// 뷰 카운트를 하나 증가시킨다.
-	
-	// 웹소켓으로 수정된 조회수 top5를 전송한다.
-	
 
+    // 뷰 카운트를 하나 증가시킨다.
+    db.coupon.updateOne({_id: coupon._id}, {$inc:{viewCount:1}}, function(){
+      // 웹소켓으로 수정된 조회수 top5를 전송한다.
+      topCoupon('viewCount', function(data){
+        //top5라는 이벤트 발생시켜라, 그리고 모든 인자값을 넘겨라..
+        io.emit('top5', data);
+      });
+    });
+  });
 };
 
 // 구매 화면에 보여줄 쿠폰 정보 조회
@@ -116,13 +138,11 @@ module.exports.buyCouponForm = function(_id, cb){
     quantity: 1,
     buyQuantity: 1,
     'image.detail': 1
-  };
-  //문자열이라 object id 로 변환해주는 작업 필요
-
-  db.coupon.findOne({_id: ObjectId(_id)}, {projection: fields}, function(err, result){
+	};
+	// TODO 쿠폰 정보를 조회한다.
+	db.coupon.findOne({_id: ObjectId(_id)}, {projection: fields}, function(err, result){
     cb(result);
   });
- 
 };
 
 // 쿠폰 구매
@@ -142,24 +162,44 @@ module.exports.buyCoupon = function(params, cb){
 		regDate: MyUtil.getTime()
 	};
 
-	// TODO 구매 정보를 등록한다.
-	db.purchase.insertOne(document, function(err, result){
+  // TODO 구매 정보를 등록한다.
+  db.purchase.insertOne(document, function(err, result){
     if(err){
       clog.error(err);
-      cb({message: '쿠폰 구매에 실패 했습니다. 잠시 후 다시 구매 요청 하시기 바랍니다.'});
+      cb({message: '쿠폰 구매에 실패했습니다. 잠시후 다시 구매요청하시기 바랍니다.'});
     }else{
-      //에러는 없으니 null
-      clog.debug(result);
-      cb(null, result.insertedId);
+      
+      // TODO 쿠폰 구매 건수를 하나 증가시킨다.
+      //$set 아니구 $inc..
+      db.coupon.updateOne({_id: document.couponId},{$inc : {buyQuantity: document.quantity}},function(){
+        cb(null, result.insertedId);
+      });
+      
     }
   });
-	// TODO 쿠폰 구매 건수를 하나 증가시킨다.
+  
+ 
+  
 	
 };	
 	
 // 추천 쿠폰 조회
 var topCoupon = module.exports.topCoupon = function(condition, cb){
-	
+  var now = MyUtil.getDay();
+	// 검색 조건
+	var query = {};
+  // 1. 판매 시작일이 지난 쿠폰, 구매 가능 쿠폰(기본 검색조건)	
+  query['saleDate.start'] = {$lte:now}; 
+  query['saleDate.finish'] = {$gte:now}; 
+
+  var fields = {couponName: 1};
+  fields[condition] = 1;
+  var order = {};
+  order[condition] = -1; // 1: 오름차순, -1: 내림차순
+  db.coupon.find(query, {projection: fields, sort: order, limit: 5}).toArray(function(err, data){
+    cb(data);
+  });
+
 };
 
 // 지정한 쿠폰 아이디 목록을 받아서 남은 수량을 넘겨준다.

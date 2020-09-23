@@ -88,3 +88,9 @@ function onListening() {
     : 'port ' + addr.port;
   debug('Listening on ' + bind);
 }
+
+
+//socket.io 서버 구동
+var socketio = require('socket.io').listen(server); //우리 웹서버랑 동일한 포트(80)사용하도록 넘겨줌 인자값으로
+app.set('io', socketio);
+
