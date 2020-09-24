@@ -5,6 +5,7 @@ var path = require('path');
 var clog = require('clog');
 var fs = require('fs');
 var MyUtil = require('../utils/myutil');
+const { param } = require('../routes');
 
 // DB 접속
 var db;
@@ -77,17 +78,28 @@ module.exports.couponList = function(qs,cb){
   
   var count = 0;
   var offset = 0;
-	
+  //page가 있다는건 오늘 메뉴라는 뜻 ..
+  if(qs.page){
+    count = 5;
+    offset = (qs.page-1) * count;
+
+  }
+
 	// TODO 전체 쿠폰 목록을 조회한다.
-	db.coupon.find(query)
-    .project(fields)
-    .sort(orderBy)
-    .skip(offset)
-    .limit(count)
-    .toArray(function(err, data){
-      clog.info(data.length);
-      cb(data);
-  });
+  var cursor = db.coupon.find(query);
+  cursor.count(function(err, totalCount){
+    cursor.project(fields)
+      .sort(orderBy)
+      .skip(offset)
+      .limit(count)
+      .toArray(function(err, data){
+        clog.info(data.length);
+        data.totalPage = Math.floor((totalCount+count-1)/count);
+        cb(data);
+      });
+    });
+  
+    
 };
 
 // 쿠폰 상세 조회
@@ -204,7 +216,14 @@ var topCoupon = module.exports.topCoupon = function(condition, cb){
 
 // 지정한 쿠폰 아이디 목록을 받아서 남은 수량을 넘겨준다.
 module.exports.couponQuantity = function(coupons, cb){
-
+  //map : 배열 메소드 기존 배열데이터를 가공해 새로운 형태로 만들고 싶을 때 
+  coupons = coupons.map(function(couponId){
+    return ObjectId(couponId);
+  });
+  //in: (mongo) 이 배열안 값과 일치하는 값 꺼내 > 배열로 변환 > 콜백함수에 그대로 넣어주면 됨 
+  db.coupon.find({_id: {$in: coupons}}).project({quantity:1, buyQuantity: 1, couponName: 1}).toArray(function(err, data){
+    cb(data);
+  });
 };
 
 // 임시로 저장한 프로필 이미지를 회원 이미지로 변경한다.
@@ -214,18 +233,38 @@ function saveImage(tmpFileName, profileImage){
   var org = path.join(tmpDir, tmpFileName);
   var dest = path.join(profileDir, profileImage);
 	// TODO 임시 이미지를 member 폴더로 이동시킨다.
-	
+	fs.rename(org, dest, function(err){
+    if(err) clog.error(err);
+  });
 }
 
 // 회원 가입
 module.exports.registMember = function(params, cb){
-	
+  var member = {
+    _id: params._id,
+    password: params.password,
+    profileImage: params._id,
+    regDate: MyUtil.getTime()
+  };
+	db.member.insertOne(member, function(err,result){
+    if(err && err.code == 11000){
+      err = {message: '이미 등록된 이메일 입니다.'};
+    }else{
+      saveImage(params.tmpFileName, member.profileImage);
+    }
+    cb(err, result);
+  });
 };
 
 // 로그인 처리
 module.exports.login = function(params, cb){
-	// TODO 지정한 아이디와 비밀번호로 회원 정보를 조회한다.
-	
+  // TODO 지정한 아이디와 비밀번호로 회원 정보를 조회한다.
+  db.member.findOne(params,{projection: {profileImage: 1}}, function(err, result){
+    if(!result){
+      err = {message: '아이디와 비밀번호를 확인하시기 바랍니다.'};
+    }
+    cb(err, result);
+  });
 };
 
 // 회원 정보 조회

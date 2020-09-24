@@ -14,8 +14,26 @@ router.get('/', function(req, res, next) {
 
 //오늘 메뉴 
 router.get('/today', function(req, res, next) {
+  //주소창에 쿼리스트링으로 페이지가 넘어오면 int값으로 바궈주고 없으면 디폴트ㅡ페이지로..
+  if(req.query.page){
+    req.query.page = parseInt(req.query.page);
+  }else{
+    req.query.page = 1;
+    if(req.query.date){ req.url += '&page=1'; }else{ req.url += '?page=1';}
+  }
+
   model.couponList(req.query,function(list){
-    res.render('today', { title: '오늘의 쿠폰', list, css: 'today.css' });
+    list.page = {};
+     if(req.query.page > 1){
+       list.page.pre = req.url.replace(`page=${req.query.page}`, `page=${req.query.page-1}`);
+     }
+     if(req.query.page < list.totalPage){
+       list.page.next = req.url.replace(`page=${req.query.page}`, `page=${req.query.page+1}`);
+     }
+
+
+    
+    res.render('today', { title: '오늘의 쿠폰', list, css: 'today.css', query: req.query , options: MyUtil.generateOptions});
 
   });
 });
@@ -74,12 +92,19 @@ router.get('/topCoupon', function(req, res, next){
 // 모두 메뉴
 router.get('/all', function(req, res, next){
   model.couponList(req.query,function(list){
-    res.render('all', { title: '모든 쿠폰', list, css: 'all.css' });
+    res.render('all', { title: '모든 쿠폰', list, css: 'all.css', query: req.query , options: MyUtil.generateOptions});
   });
 });
 // 쿠폰 남은 수량 조회
 router.get('/couponQuantity', function(req, res, next){
-  res.end('success');
+  model.couponQuantity(req.query.couponIdList.split(','), function(list){
+   //Server-Sent Events 형식의 응답
+    res.contentType('text/event-stream');
+    //res.write('data');
+    res.write('data:' + JSON.stringify(list)+'\n');
+    res.write('retry:10000\n');
+    res.end('\n');
+  });
 });
 
 

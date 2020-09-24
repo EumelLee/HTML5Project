@@ -28,10 +28,10 @@ function uploadProfileImage(){
 	xhr.onload = function(){
 		var tmpFileName = xhr.responseText;
 		$('.form_section > form')[0].tmpFileName.value = tmpFileName;
-		$('.form_section > form img').attr('src', '/tmp/' + tmpFileName);
+		$('.form_section > form img').attr('src', '/tmp/' + tmpFileName); //일단 임시파일로.. 파일만 올리고 가입 안할수도 있으니까 
 	};	
 	
-	// 선택한 프로필 이미지를 서버로 업로드한다.
+	// 선택한 프로필 이미지를 서버로 업로드한다. form 데이터를 만들어서 파일을 지정해서 첨부해서 전송할수있다.
 	var formData = new FormData();
 	formData.append('profile', this.files[0]);
 	

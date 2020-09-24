@@ -1,11 +1,10 @@
-
 <!DOCTYPE html>
 <html lang="ko">
-<%-include('layout/head'); %>
+<%- include('layout/head'); %>
 <body>
 	<a href="#main" id="skipNavi">본문바로가기</a>
 	<div id="page">
-    <%-include('layout/header'); %>
+    <%- include('layout/header'); %>
     <div id="main">			
 			<section id="coupon">
 				<h1 class="blind">쿠폰 상세 정보</h1>
@@ -20,21 +19,22 @@
             <!-- 구매하기 -->
             <section class="form_section">
               <h1>구매하기</h1>
-              <form novalidate>
-                <input type="hidden" name = "couponId" value = "<%=coupon._id%>">
-                <input type="hidden" name = "unitPrice" value = "<%=coupon.price%>">
+              <form>
+                <input type="hidden" name="couponId" value="<%=coupon._id%>">
+                <input type="hidden" name="unitPrice" value="<%=coupon.price%>">
                 <img src="/css/svg/cart_form.svg">
                 <table>
                   <tbody>
                     <tr>
                       <th><label for="buyQuantity">구매수량</label></th>
                       <td class="number_td">
-                        <input type="number" name="quantity" min ="1" max ="<%=coupon.quantity-coupon.buyQuantity%>" value = "1" required>
+                        <input type="number" name="quantity" 
+                          min="1" max="<%=coupon.quantity-coupon.buyQuantity%>" value="1" required>
                       </td>
                     </tr>
                     <tr>
                       <th>결제가격</th>
-                      <td class="number_td"><ouput name = "totalPrice"> <%=coupon.price%></ouput> 원</td>
+                      <td class="number_td"><output name="totalPrice"><%=coupon.price%></output> 원</td>
                     </tr>
                     <tr>
                       <th><label for="cardtype">카드종류</label></th>
@@ -51,21 +51,21 @@
                     <tr>
                       <th><label for="cardNumber">카드번호</label></th>
                       <td><input type="text" name="cardNumber"
-                        maxlength="16" pattern="^\d{16}$" required value ="1234567890123456"></td>
+                            maxlength="16" pattern="^\d{16}$" required value="1234567890123456"></td>
                     </tr>
                     <tr>
                       <th><label>카드 유효 기간</label></th>
                       <td>
                         <input type="number" name="cardExpireMonth" title="유효기간 월"
-                        min ="1" max ="12" required value="9" placeholder="MM"> 
+                          min="1" max="12" required value="9" placeholder="MM"> 
                         / <input type="number" name="cardExpireYear" title="유효기간 년"
-                        min ="2020" max ="2030" value ="2023" required placeholder="YYYY">
+                            min="2020" max="2030" value="2023" required placeholder="YYYY">
                       </td>
                     </tr>
                     <tr>
                       <th><label for="csv">CSV코드</label></th>
-                      <td><input type="number" name="csv"
-                        maxlength="3" pattern="^\d{3}$" required value ="123" placeholder ="카드 뒷면 숫자 3자리"></td>
+                      <td><input type="text" name="csv"
+                            maxlength="3" pattern="^\d{3}$" required value="123" placeholder="카드 뒷면 숫자 3자리"></td>
                     </tr>
                   </tbody>
                 </table>
@@ -80,14 +80,8 @@
 				</div>
 			</section>
 		</div>
-
     <%- include('layout/footer'); %>
-
 	</div>
 </body>
 </html>
-
-
-
-
-
+    
