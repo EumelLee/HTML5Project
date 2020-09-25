@@ -4,6 +4,9 @@ var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 var session = require('express-session');
+var nocache = require('nocache');
+var checkLogin = require('./middleware/checklogin');
+
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
@@ -67,14 +70,27 @@ app.use('/test', function(req,res,next){
   next(); // 등록된 다음 미들웨어가 이어서 호출된다 
 });
 
+//라우터 까지 왔으면 얘는 동적인 컨텐츠라는 말..
+app.use(nocache());
 
 app.use('/', indexRouter); //이제 라우터가 받는다 .. 인덱스와 유저 ....
-app.use('/users', usersRouter);
+//라우터 앞에 체크로그인을 위치해서 체크하고 라우터로 넘어가도록 할 수도 잇음 
+app.use('/users',usersRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
   next(createError(404, req.url + 'Not Found!'));
 });
+
+//custom error handler
+app.use(function(err, req, res, next){
+  if(err.type == 'json'){
+    res.json({errors: err});
+  }else {
+    next(err);
+  }
+});
+
 
 // error handler
 app.use(function(err, req, res, next) {

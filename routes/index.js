@@ -5,6 +5,7 @@ var router = express.Router();
 var model = require('../model/mulpangDao');
 
 var MyUtil = require('../utils/myutil');
+var checkLogin = require('../middleware/checklogin');
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
@@ -50,7 +51,7 @@ router.get('/coupons/:_id', function(req, res, next) {
 });
 
 //쿠폰 구매 화면
-router.get('/purchase/:_id', function(req, res, next) {
+router.get('/purchase/:_id', checkLogin, function(req, res, next) {
   var _id = req.params._id;
   model.buyCouponForm(_id, function(coupon){
     //ejs맞춰서 적어줌 'buy'
@@ -59,11 +60,13 @@ router.get('/purchase/:_id', function(req, res, next) {
   });
 });
 
-//쿠폰 구매 화면
-router.post('/purchase', function(req, res, next) {
+//쿠폰 구매 d
+router.post('/purchase',checkLogin,  function(req, res, next) {
+  req.body.userid = req.session.user._id;
   model.buyCoupon(req.body, function(err, result){ //post방식이라 req.body
     if(err){
-      res.json({errors: err});
+      // res.json({errors: err});
+      next(err); //모든 미들웨어 건너뛰고 에러 처리하는 미들웨어가 호출된다
     }else{
       res.end('success');
     }
