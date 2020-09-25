@@ -8,6 +8,7 @@
     "dbshell": "c:/html5project/mongodb/bin/mongo mulpang"
   },
   "dependencies": {
+    "bcryptjs": "^2.4.3",
     "clog": "^0.1.6",
     "cookie-parser": "^1.4.4",
     "date-format": "^2.0.0",

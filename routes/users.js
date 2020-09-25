@@ -4,6 +4,7 @@ var router = express.Router();
 var model = require('../model/mulpangDao');
 var MyUtil = require('../utils/myutil');
 var checkLogin = require('../middleware/checklogin');
+var MyError = require('../errors');
 
 // 회원 가입 화면
 router.get('/new', function(req, res, next) {
@@ -18,8 +19,12 @@ router.post('/profileUpload', multer({dest: tmp}).single('profile'), function(re
   console.log(req.file);
   res.end(req.file.filename);   // 임시 파일명 응답
 });
+
+var bcrypt = require('bcryptjs');
+
 // 회원 가입 요청
 router.post('/new', function(req, res, next) {
+  req.body.password = bcrypt.hashSync(req.body.password, 8); //8번변환시켜 salt값을 가져온다 (암호화)
   model.registMember(req.body, function(err, result){
     if(err){
       next(err);
@@ -30,16 +35,31 @@ router.post('/new', function(req, res, next) {
   });
 });
 // 간편 로그인
+
 router.post('/simpleLogin', function(req, res, next) {
-  model.login(req.body, function(err, user){
+  //해시값이랑 입력값이랑 비교해서 맞는지 아닌지 확인하는 작업 ..
+  model.getUser(req.body._id, function(err, user){
     if(err){
       next(err);
-      // res.json({errors: err});
     }else{
-      req.session.user = user;
-      res.json(user);
+      if(bcrypt.compare(req.body.password, user.password)){
+        req.session.user = user;
+        delete user.password;
+        res.json(user);
+       }else{
+         next(MyError.LOGIN_FAIL);
+       }
     }
   });
+  // model.login(req.body, function(err, user){
+  //   if(err){
+  //     next(err);
+  //     // res.json({errors: err});
+  //   }else{
+  //     req.session.user = user;
+  //     res.json(user);
+  //   }
+  // });
 });
 // 로그아웃
 router.get('/logout', function(req, res, next) {

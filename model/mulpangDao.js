@@ -271,6 +271,20 @@ module.exports.login = function(params, cb){
   });
 };
 
+// 회원정보 조회
+module.exports.getUser = function(_id, cb){
+  // TODO 지정한 아이디와 비밀번호로 회원 정보를 조회한다.
+  db.member.findOne({_id}, function(err, result){
+    if(!result){
+      err = MyError.LOGIN_FAIL;
+      // err = {message: '아이디와 비밀번호를 확인하시기 바랍니다.'};
+    }
+    cb(err, result);
+  });
+};
+
+
+
 // 회원 정보 조회
 module.exports.getMember = function(userid, cb){
   db.purchase.aggregate([
